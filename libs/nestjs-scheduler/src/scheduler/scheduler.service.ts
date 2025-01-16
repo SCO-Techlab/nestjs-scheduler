@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { CronJob } from 'cron';
 import { getRegisteredTasks } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
-import { CronJob } from 'cron';
 
 @Injectable()
 export class SchedulerService {
@@ -12,7 +12,7 @@ export class SchedulerService {
     this._tasks = [];
   }
 
-  async onModuleInit(): Promise<void> {
+  private async onModuleInit(): Promise<void> {
     this._tasks = getRegisteredTasks() ?? [];
     if (!this._tasks || this._tasks.length == 0) return;
 
@@ -24,11 +24,11 @@ export class SchedulerService {
       }
 
       if (task.type === 'Interval') {
-
+        this.initialiceIntervalJob(task, index);
       }
 
       if (task.type === 'Delay') {
-
+        await this.initialiceDelayJob(task, index);
       }
     }
   }
@@ -45,5 +45,32 @@ export class SchedulerService {
 
     this._tasks[index].object = cronJob;
     this._tasks[index].object.start();
+  }
+
+  private initialiceIntervalJob(task: ScheduleTask, index: number): void {
+    const intervalJob = setInterval(async () => {
+      try {
+        const instance = new task.target();
+        await instance[task.methodName]();
+      } catch (error) {
+        console.error(`[initialiceIntervalJob] Interval '${task.methodName}' Error: ${error}`);
+      }
+    }, task.options.intervalOptions.intervalTime);
+
+    this._tasks[index].object = intervalJob;
+    // clearInterval(this.mapmanager.get(this._intervals, body.name));
+  }
+
+  private initialiceDelayJob(task: ScheduleTask, index: number): void {
+    const timeOutJob: NodeJS.Timeout = setTimeout(async () => {
+      try {
+        const instance = new task.target();
+        await instance[task.methodName]();
+      } catch (error) {
+        console.error(`[initialiceDelayJob] Delay '${task.methodName}' Error: ${error}`);
+      }
+    }, task.options.delayOptions.delayTime);
+
+    this._tasks[index].object = timeOutJob;
   }
 }

@@ -24,11 +24,16 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
         throw new Error('Cron tasks require a valid cronTime');
       }
     } else if (type === 'Interval') {
-
+      if (!options || !options.intervalOptions || options.intervalOptions.intervalTime == undefined || options.intervalOptions.intervalTime < 0) {
+        throw new Error('Interval tasks require a valid intervalTime');
+      }
     } else if (type == 'Delay') {
-      
+      if (!options || !options.delayOptions || options.delayOptions.delayTime == undefined || options.delayOptions.delayTime < 0) {
+        throw new Error('Delay tasks require a valid delayTime');
+      }
     }
 
+    
     // Add task to the list
     tasks.push({
       type,

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CronJob } from 'cron';
-import { fillTaskDefaults, getRegisteredTasks, validateTask } from './scheduler.decorator';
+import { fillTaskDefaults, getRegisteredTasks, manageTaskSubscription, validateTask } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
 
 @Injectable()
@@ -27,10 +27,7 @@ export class SchedulerService {
 
     for (const task of tasks) {
       const val_error: string = validateTask(task.type, task.name, task.options);
-      if (val_error) {
-        console.log(`[addTask] Task '${task.name}' Error: ${val_error}`);
-        throw new Error(val_error);
-      }
+      if (val_error) throw new Error(val_error);
 
       this._tasks.push(fillTaskDefaults(task));
       await this.startTasks(task.name);
@@ -44,12 +41,10 @@ export class SchedulerService {
     if (!names || names.length == 0) throw new Error('Names are required');
 
     for (const task of getTasksByNames.bind(this)(names)) {
-      const index: number = this._tasks.indexOf(task);
       const stop_task: boolean = await this.stopTasks(task.name);
-      if (!stop_task) {
-        throw new Error(`Unnable to stop task ${task.name}`);
-      }
+      if (!stop_task) throw new Error(`Unnable to stop task ${task.name}`);
       
+      const index: number = this._tasks.indexOf(task);
       this._tasks.splice(index, 1);
     }
     
@@ -103,14 +98,13 @@ function initialiceCronJob(task: ScheduleTask, index: number): void {
     task.options.cronTime, // CronTime
     async () => { // OnTick
       try {
-        if (task.decorator) {
-          const instance = new task.decorator.target();
-          await instance[task.decorator.methodName]();
-        } else {
-          if (task.fn) await task.fn();
-        }
+        const response: any = task.decorator
+          ? await new task.decorator.target()[task.decorator.methodName]()
+          : task.fn ? await task.fn() : null;
+
+        if (response) await manageTaskSubscription(task, response);
       } catch (error) {
-        console.error(`[initialiceCronJob] Cron '${task.name}' Error: ${error}`);
+        console.error(`[Scheduler] Cron '${task.name}' execution error: ${error}`);
       }
     },
     null, // OnComplete
@@ -125,14 +119,13 @@ function initialiceCronJob(task: ScheduleTask, index: number): void {
 function initialiceIntervalJob(task: ScheduleTask, index: number): void {
   const intervalJob = setInterval(async () => {
     try {
-      if (task.decorator) {
-        const instance = new task.decorator.target();
-        await instance[task.decorator.methodName]();
-      } else {
-        if (task.fn) await task.fn();
-      }
+      const response: any = task.decorator
+        ? await new task.decorator.target()[task.decorator.methodName]()
+        : task.fn ? await task.fn() : null;
+
+      if (response) await manageTaskSubscription(task, response);
     } catch (error) {
-      console.error(`[initialiceIntervalJob] Interval '${task.name}' Error: ${error}`);
+      console.error(`[Scheduler] Interval '${task.name}' execution error: ${error}`);
     }
   }, task.options.ms);
 
@@ -142,14 +135,13 @@ function initialiceIntervalJob(task: ScheduleTask, index: number): void {
 function initialiceDelayJob(task: ScheduleTask, index: number): void {
   const timeOutJob: NodeJS.Timeout = setTimeout(async () => {
     try {
-      if (task.decorator) {
-        const instance = new task.decorator.target();
-        await instance[task.decorator.methodName]();
-      } else {
-        if (task.fn) await task.fn();
-      }
+      const response: any = task.decorator
+        ? await new task.decorator.target()[task.decorator.methodName]()
+        : task.fn ? await task.fn() : null;
+
+      if (response) await manageTaskSubscription(task, response);
     } catch (error) {
-      console.error(`[initialiceDelayJob] Delay '${task.name}' Error: ${error}`);
+      console.error(`[Scheduler] ${task.type == 'RunAt' ? 'RunAt' : 'Delay'} '${task.name}' execution error: ${error}`);
     }
   }, task.options.ms);
 

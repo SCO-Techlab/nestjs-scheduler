@@ -1,22 +1,41 @@
 import { Type } from '@nestjs/common';
 import * as moment from 'moment-timezone';
 import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types';
+import { isObservable } from 'rxjs';
 
 const tasks: ScheduleTask[] = [];
 
 // Expose tasks list
 export function getRegisteredTasks(): ScheduleTask[] {
   return tasks.sort((a, b) => {
-    // Si ambos tienen prioridad definida, los comparamos normalmente
+    // If both have priority defined, they are compared normally
     if (a.options.priority !== undefined && b.options.priority !== undefined) {
       return a.options.priority - b.options.priority;
     }
-    // Si solo uno tiene prioridad definida, el otro va al final
+    
+    // If only one has priority defined, the other goes to the end
     if (a.options.priority === undefined) return 1;
     if (b.options.priority === undefined) return -1;
-    // Si ambos son undefined, se mantienen iguales
+    
+    // If both are undefined, they are kept equal
     return 0;
   }) ?? [];
+}
+
+export async function manageTaskSubscription(task: ScheduleTask, response: any): Promise<void> {
+  if (!task || !response) return;
+
+  if (isObservable(response)) {
+    response.subscribe({
+      next: async (value: any) => { if (value && value === 'function') await value(); },
+      error: (err) => { console.error(`[Scheduler] Task '${task.name}' subscription error: ${err}`); },
+      complete: () => { },
+    });
+  }
+  
+  if (response instanceof Promise) {
+    await response;
+  }
 }
 
 export function validateTask(type: ExecutionType, name: string, options: ScheduleOptions = {}): string {

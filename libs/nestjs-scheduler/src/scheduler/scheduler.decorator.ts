@@ -1,29 +1,41 @@
-import { Injectable, Type } from '@nestjs/common';
-import { ScheduleOptions } from './scheduler.types';
+import { Type } from '@nestjs/common';
+import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types';
 
-export type ExecutionType = 'Cron' | 'Interval' | 'Delay';
+const tasks: ScheduleTask[] = [];
 
-const tasks: { type: ExecutionType; options: ScheduleOptions; target: Type<any>; methodName: string }[] = [];
+// Expose tasks list
+export function getRegisteredTasks(): ScheduleTask[] {
+  return tasks ?? [];
+}
 
 // Decorador principal
-export function Schedule(type: ExecutionType, options: ScheduleOptions = {}): MethodDecorator {
+export function Schedule(type: ExecutionType, name: string, options: ScheduleOptions = {}): MethodDecorator {
   return (target: Object, methodName: string | symbol, descriptor: PropertyDescriptor) => {
-    // Validación inicial
-    if (type === 'Cron' && !options.cronTime) {
-      throw new Error('Cron tasks require a valid cronTime.');
+
+    // Check if task name is already registered
+    if (tasks.find(t => t.name === name)) {
+      throw new Error(`Task name '${name}' already registered`);
     }
 
-    // Registrar la tarea en un almacenamiento interno
+
+    // Check task type parámeters and options
+    if (type === 'Cron') {
+      if (!options || !options.cronOptions || !options.cronOptions.cronTime) {
+        throw new Error('Cron tasks require a valid cronTime');
+      }
+    } else if (type === 'Interval') {
+
+    } else if (type == 'Delay') {
+      
+    }
+
+    // Add task to the list
     tasks.push({
       type,
+      name,
       options,
       target: target.constructor as Type<any>,
       methodName: methodName.toString(),
     });
   };
-}
-
-// Exponer las tareas registradas
-export function getRegisteredTasks() {
-  return tasks;
 }

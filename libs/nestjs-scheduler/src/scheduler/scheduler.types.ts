@@ -1,4 +1,19 @@
+import { Type } from "@nestjs/common";
+
+export type ExecutionType = 'Cron' | 'Interval' | 'Delay';
+
+export class ScheduleTask {
+    type: ExecutionType; 
+    name: string;
+    options: ScheduleOptions; 
+    target: Type<any>; 
+    methodName: string
+}
+
 export interface ScheduleOptions {
-    cronTime?: string; // Solo para tipo Cron (ejemplo: '*/5 * * * *')
-    // Más propiedades para Interval y Delay más adelante
+    cronOptions?: ScheduleCronOptions;
+}
+
+export interface ScheduleCronOptions {
+    cronTime: string;
 }

@@ -1,24 +1,46 @@
 import { Injectable } from '@nestjs/common';
-import * as cron from 'node-cron'; // Librería para manejar Cron (puede ser cambiada)
+import * as cron from 'node-cron';
 import { getRegisteredTasks } from './scheduler.decorator';
+import { ScheduleTask } from './scheduler.types';
 
 @Injectable()
 export class SchedulerService {
+
+  private _tasks: ScheduleTask[];
   
   constructor() {
-    this.initializeTasks();
+    this._tasks = [];
   }
 
-  initializeTasks() {
-    const tasks = getRegisteredTasks();
+  async onModuleInit(): Promise<void> {
+    this._tasks = getRegisteredTasks() ?? [];
+    if (!this._tasks || this._tasks.length == 0) return;
 
-    for (const task of tasks) {
+    for (const task of this._tasks) {
+      console.log(task.name)
+
       if (task.type === 'Cron') {
-        cron.schedule(task.options.cronTime, async () => {
-          const instance = new task.target(); // Crear instancia del servicio
-          await instance[task.methodName](); // Llamar al método decorado
-        });
+      this.initialiceCronJob(task);
+      }
+
+      if (task.type === 'Interval') {
+
+      }
+
+      if (task.type === 'Delay') {
+
       }
     }
+  }
+
+  private initialiceCronJob(task: ScheduleTask): void {
+    cron.schedule(task.options.cronOptions.cronTime, async () => {
+      try {
+        const instance = new task.target();
+        await instance[task.methodName]();
+      } catch (error) {
+        console.error(`[initialiceCronJob] Cron '${task.methodName}' Error: ${error}`);
+      }
+    });
   }
 }

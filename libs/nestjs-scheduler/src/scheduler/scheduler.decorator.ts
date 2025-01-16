@@ -36,6 +36,7 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
       options,
       target: target.constructor as Type<any>,
       methodName: methodName.toString(),
+      object: undefined,
     });
   };
 }

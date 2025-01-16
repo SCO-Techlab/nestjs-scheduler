@@ -7,13 +7,24 @@ export class ScheduleTask {
     name: string;
     options: ScheduleOptions; 
     target: Type<any>; 
-    methodName: string
+    methodName: string;
+    object?: any;
 }
 
 export interface ScheduleOptions {
     cronOptions?: ScheduleCronOptions;
+    intervalOptions?: ScheduleIntervalOptions;
+    delayOptions?: ScheduleDelayOptions;
 }
 
 export interface ScheduleCronOptions {
     cronTime: string;
+}
+
+export interface ScheduleIntervalOptions {
+    intervalTime: number;
+}
+
+export interface ScheduleDelayOptions {
+    delayTime: number;
 }

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import * as cron from 'node-cron';
 import { getRegisteredTasks } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
+import { CronJob } from 'cron';
 
 @Injectable()
 export class SchedulerService {
@@ -17,10 +17,10 @@ export class SchedulerService {
     if (!this._tasks || this._tasks.length == 0) return;
 
     for (const task of this._tasks) {
-      console.log(task.name)
+      const index: number = this._tasks.indexOf(task);
 
       if (task.type === 'Cron') {
-      this.initialiceCronJob(task);
+        this.initialiceCronJob(task, index);
       }
 
       if (task.type === 'Interval') {
@@ -33,8 +33,8 @@ export class SchedulerService {
     }
   }
 
-  private initialiceCronJob(task: ScheduleTask): void {
-    cron.schedule(task.options.cronOptions.cronTime, async () => {
+  private initialiceCronJob(task: ScheduleTask, index: number): void {
+    const cronJob = new CronJob(task.options.cronOptions.cronTime, async () => {
       try {
         const instance = new task.target();
         await instance[task.methodName]();
@@ -42,5 +42,8 @@ export class SchedulerService {
         console.error(`[initialiceCronJob] Cron '${task.methodName}' Error: ${error}`);
       }
     });
+
+    this._tasks[index].object = cronJob;
+    this._tasks[index].object.start();
   }
 }

@@ -16,7 +16,7 @@ export class SchedulerService {
     for (const task of tasks) {
       // Initial tasks loaded by decorats will be added in map before start
       // If not add in map before start, will not pass the task find validation
-      this.state.setValue(task.name, task);
+      this.state.set(task.name, task);
       this.startTasks(task.name);
     }
   }
@@ -43,7 +43,7 @@ export class SchedulerService {
       }
 
       // Add task to the map and start it
-      this.state.setValue(filled_task.name, filled_task);
+      this.state.set(filled_task.name, filled_task);
       this.startTasks(filled_task.name);
     }
 
@@ -63,7 +63,7 @@ export class SchedulerService {
       if (!stop_task) throw new Error(`Unnable to stop task ${task.name}`);
       
       // Delete task from the map
-      this.state.deleteValue(task.name);
+      this.state.delete(task.name);
     }
     
     return true;
@@ -78,21 +78,18 @@ export class SchedulerService {
     for (const task of getTasksByNames.bind(this)(names)) {
 
       // Stop the task by type
-      if (this.state.getValue(task.name).type === 'Cron') 
-        this.state.getValue(task.name).object.stop();
+      if (this.state.get(task.name).type === 'Cron') 
+        this.state.get(task.name).object.stop();
 
-      if (this.state.getValue(task.name).type === 'Interval')
-         clearInterval(this.state.getValue(task.name).object);
+      if (this.state.get(task.name).type === 'Interval')
+         clearInterval(this.state.get(task.name).object);
 
-      if (this.state.getValue(task.name).type === 'Delay') 
-        clearTimeout(this.state.getValue(task.name).object);
-
-      if (this.state.getValue(task.name).type === 'RunAt') 
-        clearTimeout(this.state.getValue(task.name).object);
+      if (this.state.get(task.name).type === 'Delay' || this.state.get(task.name).type === 'RunAt') 
+        clearTimeout(this.state.get(task.name).object);
 
       // Remove task response
-      if (this.state.getValue(task.name).response) 
-        this.state.getValue(task.name).response = undefined;
+      if (this.state.get(task.name).response) 
+        this.state.get(task.name).response = undefined;
     }
 
     return true;
@@ -106,42 +103,35 @@ export class SchedulerService {
     // Loop the tasks returned by getTasksByNames, this method will validate if tasks exists
     for (const task of getTasksByNames.bind(this)(names)) {
 
-      if (this.state.getValue(task.name).type === 'Cron') {
-        this.state.getValue(task.name).object = new CronJob(
-          this.state.getValue(task.name).options.cronTime, // CronTime
+      if (this.state.get(task.name).type === 'Cron') {
+        this.state.get(task.name).object = new CronJob(
+          this.state.get(task.name).options.cronTime, // CronTime
           cronJobCallback.bind(this, task), // OnTick
           null, // OnComplete
           false, // Start,
-          this.state.getValue(task.name).options?.timeZone 
-            ? this.state.getValue(task.name).options.timeZone 
+          this.state.get(task.name).options?.timeZone 
+            ? this.state.get(task.name).options.timeZone 
             : null, // Timezone
         );
       }
 
-      if (this.state.getValue(task.name).type === 'Interval') {
-        this.state.getValue(task.name).object = setInterval(
-          intervalJobCallback.bind(this, this.state.getValue(task.name)), 
-          this.state.getValue(task.name).options.ms
+      if (this.state.get(task.name).type === 'Interval') {
+        this.state.get(task.name).object = setInterval(
+          intervalJobCallback.bind(this, this.state.get(task.name)), 
+          this.state.get(task.name).options.ms
         );
       }
 
-      if (this.state.getValue(task.name).type === 'Delay') {
-        this.state.getValue(task.name).object = setTimeout(
-          delayJobCallback.bind(this, this.state.getValue(task.name)), 
-          this.state.getValue(task.name).options.ms
-        );
-      }
-
-      if (this.state.getValue(task.name).type === 'RunAt') {
-        this.state.getValue(task.name).object = setTimeout(
-          delayJobCallback.bind(this, this.state.getValue(task.name)), 
-          this.state.getValue(task.name).options.ms
+      if (this.state.get(task.name).type === 'Delay' || this.state.get(task.name).type === 'RunAt') {
+        this.state.get(task.name).object = setTimeout(
+          delayJobCallback.bind(this, this.state.get(task.name)), 
+          this.state.get(task.name).options.ms
         );
       }
      
       // Update the task in the map
-      if (this.state.getValue(task.name).type === 'Cron') {
-        this.state.getValue(task.name).object.start();
+      if (this.state.get(task.name).type === 'Cron') {
+        this.state.get(task.name).object.start();
       }
     }
 
@@ -180,7 +170,7 @@ async function cronJobCallback(task: ScheduleTask): Promise<void> {
   
       // If callback return a value, manage the subscription and update value
       if (response) {
-        const current_task: ScheduleTask = this.state.getValue(task.name);
+        const current_task: ScheduleTask = this.state.get(task.name);
         current_task.response = await manageTaskSubscription(task, response);
         this.state.setValue(task.name, current_task);
       }
@@ -203,7 +193,7 @@ async function intervalJobCallback(task: ScheduleTask): Promise<void> {
   
       // If callback return a value, manage the subscription and update value
       if (response) {
-        const current_task: ScheduleTask = this.state.getValue(task.name).response;
+        const current_task: ScheduleTask = this.state.get(task.name).response;
         current_task.response = await manageTaskSubscription(task, response);
         this.state.setValue(task.name, current_task);
       }
@@ -226,7 +216,7 @@ async function delayJobCallback(task: ScheduleTask): Promise<void> {
   
       // If callback return a value, manage the subscription and update value
       if (response) {
-        const current_task: ScheduleTask = this.state.getValue(task.name).response;
+        const current_task: ScheduleTask = this.state.get(task.name).response;
         current_task.response = await manageTaskSubscription(task, response);
         this.state.setValue(task.name, current_task);
       }
@@ -240,7 +230,7 @@ async function delayJobCallback(task: ScheduleTask): Promise<void> {
 }
 
 function getTasksByNames(names: string[]) : ScheduleTask[] {
-  // This method will validate if the task list provide by input exist in the scheduler
+  // This method will validate if the task list provide by input exist in the scheduler state
 
   const tasks: ScheduleTask[] = [];
   for (const name of names) {
@@ -292,6 +282,8 @@ async function resolveValue(value: any): Promise<any> {
 
 async function manageTaskSubscription(task: ScheduleTask, response: any): Promise<void> {
   if (!task || !response) return;
+
+  // TODO: I think that this method can be refacotered to not duplicate code with function resolveValue
 
   // Observable management
   if (isObservable(response)) {

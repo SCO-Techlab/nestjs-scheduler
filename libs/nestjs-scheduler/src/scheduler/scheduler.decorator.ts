@@ -1,4 +1,3 @@
-import { Type } from '@nestjs/common';
 import * as moment from 'moment-timezone';
 import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types';
 
@@ -21,19 +20,20 @@ export function getRegisteredTasks(): ScheduleTask[] {
   }) ?? [];
 }
 
+// Validate new task
 export function validateTask(type: ExecutionType, name: string, options: ScheduleOptions = {}): string {
   // Check if task name is already registered
   if (tasks.find(t => t.name === name)) {
     return `Task name '${name}' already registered`;
   }
 
+  // Priority will only apply to decorator tasks
   if (options.priority != undefined && options.priority >= 0) {
     if (tasks.find(t => t.options.priority === options.priority)) {
       return `Task name '${name}' priority '${options.priority}' already registered`;
     }
   }
 
-  // Check task type parámeters and options
   if (type === 'Cron') {
     if (!options?.cronTime) {
       return 'Cron tasks require a valid cronTime';
@@ -77,6 +77,7 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
   return '';
 }
 
+// Fill task default values
 export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
   if (!task) return task;
 
@@ -101,21 +102,20 @@ export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
   return task;
 }
 
-// Decorador principal
+// Main Scheduler decorator
 export function Schedule(type: ExecutionType, name: string, options: ScheduleOptions = {}): MethodDecorator {
   return (target: Object, methodName: string | symbol, descriptor: PropertyDescriptor) => {
+
+    // Validate task, if error reported not continue with execution
     const val_error: string = validateTask(type, name, options);
     if (val_error) throw new Error(val_error);
 
+    // Create the new task with the defaults values filled
     const new_task: ScheduleTask = fillTaskDefaults({
       type,
       name,
       options,
-      decorator: {
-        target: target.constructor as Type<any>,
-        methodName: methodName.toString(),
-      },
-      fn: undefined,
+      fn: target[methodName.toString()],
       object: undefined,
       response: undefined,
     });

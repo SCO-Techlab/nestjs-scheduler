@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CronJob } from 'cron';
+import { isObservable, Observable } from 'rxjs';
 import { fillTaskDefaults, getRegisteredTasks, validateTask } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
-import { isObservable, Observable } from 'rxjs';
 import { SchedulerStateService } from './scheduler.state';
 
 @Injectable()
@@ -37,6 +37,10 @@ export class SchedulerService {
 
       // Fill task default params values
       const filled_task: ScheduleTask = fillTaskDefaults(task);
+
+      if (this.state.exist(filled_task.name)) {
+        this.stopTasks(filled_task.name);
+      }
 
       // Add task to the map and start it
       this.state.setValue(filled_task.name, filled_task);
@@ -74,13 +78,21 @@ export class SchedulerService {
     for (const task of getTasksByNames.bind(this)(names)) {
 
       // Stop the task by type
-      if (task.type === 'Cron') task.object.stop();
-      if (task.type === 'Interval') clearInterval(task.object);
-      if (task.type === 'Delay') clearTimeout(task.object);
-      if (task.type === 'RunAt') clearTimeout(task.object);
+      if (this.state.getValue(task.name).type === 'Cron') 
+        this.state.getValue(task.name).object.stop();
+
+      if (this.state.getValue(task.name).type === 'Interval')
+         clearInterval(this.state.getValue(task.name).object);
+
+      if (this.state.getValue(task.name).type === 'Delay') 
+        clearTimeout(this.state.getValue(task.name).object);
+
+      if (this.state.getValue(task.name).type === 'RunAt') 
+        clearTimeout(this.state.getValue(task.name).object);
 
       // Remove task response
-      if (task.response) task.response = undefined;
+      if (this.state.getValue(task.name).response) 
+        this.state.getValue(task.name).response = undefined;
     }
 
     return true;
@@ -94,44 +106,43 @@ export class SchedulerService {
     // Loop the tasks returned by getTasksByNames, this method will validate if tasks exists
     for (const task of getTasksByNames.bind(this)(names)) {
 
-      // Get the task from map by key
-      const state_task: ScheduleTask = this.state.getValue(task.name);
-
-      if (task.type === 'Cron') {
-        state_task.object = new CronJob(
-          task.options.cronTime, // CronTime
+      if (this.state.getValue(task.name).type === 'Cron') {
+        this.state.getValue(task.name).object = new CronJob(
+          this.state.getValue(task.name).options.cronTime, // CronTime
           cronJobCallback.bind(this, task), // OnTick
           null, // OnComplete
           false, // Start,
-          task.options?.timeZone ? task.options.timeZone : null, // Timezone
-        );
-
-        state_task.object.start();
-      }
-
-      if (task.type === 'Interval') {
-        state_task.object = setInterval(
-          intervalJobCallback.bind(this, task), 
-          task.options.ms
+          this.state.getValue(task.name).options?.timeZone 
+            ? this.state.getValue(task.name).options.timeZone 
+            : null, // Timezone
         );
       }
 
-      if (task.type === 'Delay') {
-        state_task.object = setTimeout(
-          delayJobCallback.bind(this, task), 
-          task.options.ms
+      if (this.state.getValue(task.name).type === 'Interval') {
+        this.state.getValue(task.name).object = setInterval(
+          intervalJobCallback.bind(this, this.state.getValue(task.name)), 
+          this.state.getValue(task.name).options.ms
         );
       }
 
-      if (task.type === 'RunAt') {
-        state_task.object = setTimeout(
-          delayJobCallback.bind(this, task), 
-          task.options.ms
+      if (this.state.getValue(task.name).type === 'Delay') {
+        this.state.getValue(task.name).object = setTimeout(
+          delayJobCallback.bind(this, this.state.getValue(task.name)), 
+          this.state.getValue(task.name).options.ms
+        );
+      }
+
+      if (this.state.getValue(task.name).type === 'RunAt') {
+        this.state.getValue(task.name).object = setTimeout(
+          delayJobCallback.bind(this, this.state.getValue(task.name)), 
+          this.state.getValue(task.name).options.ms
         );
       }
      
       // Update the task in the map
-      this.state.setValue(task.name, state_task);
+      if (this.state.getValue(task.name).type === 'Cron') {
+        this.state.getValue(task.name).object.start();
+      }
     }
 
     return true;
@@ -165,9 +176,7 @@ async function cronJobCallback(task: ScheduleTask): Promise<void> {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.decorator
-        ? await new task.decorator.target()[task.decorator.methodName]()
-        : task.fn ? await task.fn() : null;
+      const response: any = task.fn ? await task.fn() : null;
   
       // If callback return a value, manage the subscription and update value
       if (response) {
@@ -190,9 +199,7 @@ async function intervalJobCallback(task: ScheduleTask): Promise<void> {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.decorator
-        ? await new task.decorator.target()[task.decorator.methodName]()
-        : task.fn ? await task.fn() : null;
+      const response: any = task.fn ? await task.fn() : null;
   
       // If callback return a value, manage the subscription and update value
       if (response) {
@@ -215,9 +222,7 @@ async function delayJobCallback(task: ScheduleTask): Promise<void> {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.decorator
-        ? await new task.decorator.target()[task.decorator.methodName]()
-        : task.fn ? await task.fn() : null;
+      const response: any = task.fn ? await task.fn() : null;
   
       // If callback return a value, manage the subscription and update value
       if (response) {

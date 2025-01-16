@@ -6,7 +6,6 @@ import { SchedulerModule } from '@app/nestjs-scheduler';
   imports: [
     SchedulerModule.register(),
   ],
-  controllers: [],
   providers: [AppService],
 })
 

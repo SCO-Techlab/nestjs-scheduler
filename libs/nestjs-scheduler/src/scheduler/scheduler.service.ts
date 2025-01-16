@@ -172,7 +172,7 @@ async function cronJobCallback(task: ScheduleTask): Promise<void> {
       if (response) {
         const current_task: ScheduleTask = this.state.get(task.name);
         current_task.response = await manageTaskSubscription(task, response);
-        this.state.setValue(task.name, current_task);
+        this.state.set(task.name, current_task);
       }
 
       resolve();
@@ -195,7 +195,7 @@ async function intervalJobCallback(task: ScheduleTask): Promise<void> {
       if (response) {
         const current_task: ScheduleTask = this.state.get(task.name).response;
         current_task.response = await manageTaskSubscription(task, response);
-        this.state.setValue(task.name, current_task);
+        this.state.set(task.name, current_task);
       }
 
       resolve();
@@ -218,7 +218,7 @@ async function delayJobCallback(task: ScheduleTask): Promise<void> {
       if (response) {
         const current_task: ScheduleTask = this.state.get(task.name).response;
         current_task.response = await manageTaskSubscription(task, response);
-        this.state.setValue(task.name, current_task);
+        this.state.set(task.name, current_task);
       }
 
       resolve();

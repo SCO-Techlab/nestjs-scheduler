@@ -6,12 +6,18 @@ export class ScheduleTask {
     type: ExecutionType; 
     name: string;
     options: ScheduleOptions; 
-    target?: Type<any>; 
-    methodName: string;
-    object?: any;
+    decorator?: ScheduleDecoratorOptions;
     fn?: any;
+    object?: any;
 }
 
+/* Decorator Parameters */
+export interface ScheduleDecoratorOptions {
+    target: Type<any>; 
+    methodName: string;
+}
+
+/* Options */
 export interface ScheduleOptions {
     cronOptions?: ScheduleCronOptions;
     intervalOptions?: ScheduleIntervalOptions;

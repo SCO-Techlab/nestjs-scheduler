@@ -43,10 +43,12 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
       type,
       name,
       options,
-      target: target.constructor as Type<any>,
-      methodName: methodName.toString(),
-      object: undefined,
+      decorator: {
+        target: target.constructor as Type<any>,
+        methodName: methodName.toString(),
+      },
       fn: undefined,
+      object: undefined,
     });
   };
 }

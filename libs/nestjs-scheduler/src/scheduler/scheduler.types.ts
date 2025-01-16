@@ -6,9 +6,10 @@ export class ScheduleTask {
     type: ExecutionType; 
     name: string;
     options: ScheduleOptions; 
-    target: Type<any>; 
+    target?: Type<any>; 
     methodName: string;
     object?: any;
+    fn?: any;
 }
 
 export interface ScheduleOptions {

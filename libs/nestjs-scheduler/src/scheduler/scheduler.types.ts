@@ -24,4 +24,5 @@ export class ScheduleTask {
     decorator?: ScheduleDecoratorOptions;
     fn?: any;
     object?: any;
+    response?: any;
 }

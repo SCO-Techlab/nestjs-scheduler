@@ -1,7 +1,6 @@
 import { Type } from '@nestjs/common';
 import * as moment from 'moment-timezone';
 import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types';
-import { isObservable } from 'rxjs';
 
 const tasks: ScheduleTask[] = [];
 
@@ -20,61 +19,6 @@ export function getRegisteredTasks(): ScheduleTask[] {
     // If both are undefined, they are kept equal
     return 0;
   }) ?? [];
-}
-
-function isFunction(variable: any): boolean {
-  return typeof variable === 'function' && !/^class\s/.test(variable.toString());
-}
-
-export async function manageTaskSubscription(task: ScheduleTask, response: any): Promise<void> {
-  if (!task || !response) return;
-
-  // Recursive function to resolve nested promises
-  async function resolveValue(value: any): Promise<any> {
-    if (!value) return null;
-
-    if (isFunction(value)) {
-      const function_value = await value();
-      return await resolveValue(function_value);
-    }
-
-    if (value instanceof Promise) {
-      const resolved = await value;
-      return await resolveValue(resolved);
-    }
-
-    return value;
-  }
-
-  if (isObservable(response)) {
-    response.subscribe({
-      next: async (value: any) => {
-        try {
-          const resolved = await resolveValue(value);
-          return resolved;
-        } catch (err) {
-          console.error(`[Scheduler] Task '${task.name}' subscription resolution error: ${err}`);
-        }
-      },
-      error: (err) => {
-        console.error(`[Scheduler] Task '${task.name}' subscription error: ${err}`);
-      },
-      complete: () => {
-        //console.log(`[Scheduler] Task '${task.name}' completed.`);
-      },
-    });
-    return;
-  }
-
-  if (response instanceof Promise) {
-    try {
-      const resolved = await resolveValue(response);
-      return resolved;
-    } catch (err) {
-      console.error(`[Scheduler] Task '${task.name}' promise resolution error: ${err}`);
-    }
-    return;
-  }
 }
 
 export function validateTask(type: ExecutionType, name: string, options: ScheduleOptions = {}): string {
@@ -152,6 +96,8 @@ export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
     }
   }
 
+  if (task.response != undefined) task.response = undefined;
+
   return task;
 }
 
@@ -171,6 +117,7 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
       },
       fn: undefined,
       object: undefined,
+      response: undefined,
     });
     
     // Add task to the list

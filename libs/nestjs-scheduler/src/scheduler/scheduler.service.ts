@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CronJob } from 'cron';
-import { fillTaskDefaults, getRegisteredTasks, manageTaskSubscription, validateTask } from './scheduler.decorator';
+import { fillTaskDefaults, getRegisteredTasks, validateTask } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
+import { isObservable, Observable, of } from 'rxjs';
 
 @Injectable()
 export class SchedulerService {
 
   private _tasks: ScheduleTask[];
+
+  public get tasks(): ScheduleTask[] {
+    if (this._tasks && this._tasks.length > 0) return this._tasks;
+    return [];
+  }
   
   constructor() {
     this._tasks = [];
@@ -60,6 +66,8 @@ export class SchedulerService {
       if (task.type === 'Interval') clearInterval(task.object);
       if (task.type === 'Delay') clearTimeout(task.object);
       if (task.type === 'RunAt') clearTimeout(task.object);
+
+      if (task.response) task.response = undefined;
     }
 
     return true;
@@ -102,7 +110,7 @@ function initialiceCronJob(task: ScheduleTask, index: number): void {
           ? await new task.decorator.target()[task.decorator.methodName]()
           : task.fn ? await task.fn() : null;
 
-        if (response) await manageTaskSubscription(task, response);
+          if (response) this._tasks[index].response = await manageTaskSubscription(task, response);
       } catch (error) {
         console.error(`[Scheduler] Cron '${task.name}' execution error: ${error}`);
       }
@@ -123,7 +131,7 @@ function initialiceIntervalJob(task: ScheduleTask, index: number): void {
         ? await new task.decorator.target()[task.decorator.methodName]()
         : task.fn ? await task.fn() : null;
 
-      if (response) await manageTaskSubscription(task, response);
+        if (response) this._tasks[index].response = await manageTaskSubscription(task, response);
     } catch (error) {
       console.error(`[Scheduler] Interval '${task.name}' execution error: ${error}`);
     }
@@ -139,7 +147,7 @@ function initialiceDelayJob(task: ScheduleTask, index: number): void {
         ? await new task.decorator.target()[task.decorator.methodName]()
         : task.fn ? await task.fn() : null;
 
-      if (response) await manageTaskSubscription(task, response);
+        if (response) this._tasks[index].response = await manageTaskSubscription(task, response);
     } catch (error) {
       console.error(`[Scheduler] ${task.type == 'RunAt' ? 'RunAt' : 'Delay'} '${task.name}' execution error: ${error}`);
     }
@@ -158,4 +166,65 @@ function getTasksByNames(names: string[]) : ScheduleTask[] {
   }
 
   return tasks;
+}
+
+function isFunction(variable: any): boolean {
+  return typeof variable === 'function' && !/^class\s/.test(variable.toString());
+}
+
+export async function manageTaskSubscription(task: ScheduleTask, response: any): Promise<void> {
+  if (!task || !response) return;
+
+  // Función recursiva para resolver valores
+  async function resolveValue(value: any): Promise<any> {
+    if (!value) return null;
+
+    if (isFunction(value)) {
+      return await resolveValue(value());
+    }
+
+    if (value instanceof Promise) {
+      const resolved = await value;
+      return await resolveValue(resolved);
+    }
+
+    if (isObservable(value)) {
+      const resolved: any = await new Promise<any>((resolve) => {
+        value.subscribe({
+          next: (data: any) => {
+            resolve(data);
+          },
+          error: () => {
+            resolve(null);
+          }
+        })
+      });
+      return await resolveValue(resolved);
+    }
+
+    return value; // Valor final, ni función ni promesa
+  }
+
+  // Manejo de observables
+  if (isObservable(response)) {
+    return await new Promise<any>((resolve) => {
+      response.subscribe({
+        next: async (value: any) => {
+          const resolved = await resolveValue(value);
+          resolve(resolved);
+        },
+        error: (err) => {
+          console.error(`[Scheduler] Task '${task.name}' subscription error: ${err}`);
+          resolve(undefined);
+        },
+      });
+    });
+  }
+
+  // Manejo de promesas directamente
+  if (response instanceof Promise) {
+    return await resolveValue(response);
+  }
+
+  return response;
 }

@@ -22,19 +22,58 @@ export function getRegisteredTasks(): ScheduleTask[] {
   }) ?? [];
 }
 
+function isFunction(variable: any): boolean {
+  return typeof variable === 'function' && !/^class\s/.test(variable.toString());
+}
+
 export async function manageTaskSubscription(task: ScheduleTask, response: any): Promise<void> {
   if (!task || !response) return;
 
+  // Recursive function to resolve nested promises
+  async function resolveValue(value: any): Promise<any> {
+    if (!value) return null;
+
+    if (isFunction(value)) {
+      const function_value = await value();
+      return await resolveValue(function_value);
+    }
+
+    if (value instanceof Promise) {
+      const resolved = await value;
+      return await resolveValue(resolved);
+    }
+
+    return value;
+  }
+
   if (isObservable(response)) {
     response.subscribe({
-      next: async (value: any) => { if (value && value === 'function') await value(); },
-      error: (err) => { console.error(`[Scheduler] Task '${task.name}' subscription error: ${err}`); },
-      complete: () => { },
+      next: async (value: any) => {
+        try {
+          const resolved = await resolveValue(value);
+          return resolved;
+        } catch (err) {
+          console.error(`[Scheduler] Task '${task.name}' subscription resolution error: ${err}`);
+        }
+      },
+      error: (err) => {
+        console.error(`[Scheduler] Task '${task.name}' subscription error: ${err}`);
+      },
+      complete: () => {
+        //console.log(`[Scheduler] Task '${task.name}' completed.`);
+      },
     });
+    return;
   }
-  
+
   if (response instanceof Promise) {
-    await response;
+    try {
+      const resolved = await resolveValue(response);
+      return resolved;
+    } catch (err) {
+      console.error(`[Scheduler] Task '${task.name}' promise resolution error: ${err}`);
+    }
+    return;
   }
 }
 
@@ -61,15 +100,21 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
         return 'Cron tasks require a valid timeZone';
       }
     }
-  } else if (type === 'Interval') {
+  }
+  
+  if (type === 'Interval') {
     if (options?.ms == undefined || options?.ms < 0) {
       return 'Interval tasks require a valid ms';
     }
-  } else if (type == 'Delay') {
+  }
+  
+  if (type == 'Delay') {
     if (options?.ms == undefined || options?.ms < 0) {
       return 'Delay tasks require a valid ms';
     }
-  } else if (type == 'RunAt') {
+  }
+  
+  if (type == 'RunAt') {
     if (options?.runAt == undefined ) {
       return 'RunAt tasks require a valid runAt';
     }

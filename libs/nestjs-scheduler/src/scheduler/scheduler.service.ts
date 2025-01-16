@@ -64,6 +64,7 @@ export class SchedulerService {
       if (task.type === 'Cron') task.object.stop();
       if (task.type === 'Interval') clearInterval(task.object);
       if (task.type === 'Delay') clearTimeout(task.object);
+      if (task.type === 'RunAt') clearTimeout(task.object);
     }
 
     return true;
@@ -78,6 +79,7 @@ export class SchedulerService {
       if (task.type === 'Cron') initialiceCronJob.bind(this)(task, index);
       if (task.type === 'Interval') initialiceIntervalJob.bind(this)(task, index);
       if (task.type === 'Delay') initialiceDelayJob.bind(this)(task, index);
+      if (task.type === 'RunAt') initialiceDelayJob.bind(this)(task, index);
     }
 
     return true;
@@ -97,7 +99,7 @@ export class SchedulerService {
 }
 
 function initialiceCronJob(task: ScheduleTask, index: number): void {
-  const cronJob = new CronJob(task.options.cronOptions.cronTime, async () => {
+  const cronJob = new CronJob(task.options.cronTime, async () => {
     try {
       if (task.decorator) {
         const instance = new task.decorator.target();
@@ -126,7 +128,7 @@ function initialiceIntervalJob(task: ScheduleTask, index: number): void {
     } catch (error) {
       console.error(`[initialiceIntervalJob] Interval '${task.name}' Error: ${error}`);
     }
-  }, task.options.intervalOptions.intervalTime);
+  }, task.options.ms);
 
   this._tasks[index].object = intervalJob;
 }
@@ -143,7 +145,7 @@ function initialiceDelayJob(task: ScheduleTask, index: number): void {
     } catch (error) {
       console.error(`[initialiceDelayJob] Delay '${task.name}' Error: ${error}`);
     }
-  }, task.options.delayOptions.delayTime);
+  }, task.options.ms);
 
   this._tasks[index].object = timeOutJob;
 }

@@ -1,15 +1,6 @@
 import { Type } from "@nestjs/common";
 
-export type ExecutionType = 'Cron' | 'Interval' | 'Delay';
-
-export class ScheduleTask {
-    type: ExecutionType; 
-    name: string;
-    options: ScheduleOptions; 
-    decorator?: ScheduleDecoratorOptions;
-    fn?: any;
-    object?: any;
-}
+export type ExecutionType = 'Cron' | 'Interval' | 'Delay' | 'RunAt';
 
 /* Decorator Parameters */
 export interface ScheduleDecoratorOptions {
@@ -20,20 +11,16 @@ export interface ScheduleDecoratorOptions {
 /* Options */
 export interface ScheduleOptions {
     priority?: number;
-
-    cronOptions?: ScheduleCronOptions;
-    intervalOptions?: ScheduleIntervalOptions;
-    delayOptions?: ScheduleDelayOptions;
+    cronTime?: string;
+    ms?: number;
+    runAt?: Date;
 }
 
-export interface ScheduleCronOptions {
-    cronTime: string;
-}
-
-export interface ScheduleIntervalOptions {
-    intervalTime: number;
-}
-
-export interface ScheduleDelayOptions {
-    delayTime: number;
+export class ScheduleTask {
+    type: ExecutionType; 
+    name: string;
+    options: ScheduleOptions; 
+    decorator?: ScheduleDecoratorOptions;
+    fn?: any;
+    object?: any;
 }

@@ -18,16 +18,6 @@ export function getRegisteredTasks(): ScheduleTask[] {
   }) ?? [];
 }
 
-export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
-  if (!task) return task;
-
-  if (task.options?.priority != undefined && task.options?.priority < 0) {
-    task.options.priority = undefined;
-  }
-
-  return task;
-}
-
 export function validateTask(type: ExecutionType, name: string, options: ScheduleOptions = {}): string {
   // Check if task name is already registered
   if (tasks.find(t => t.name === name)) {
@@ -42,20 +32,47 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
 
   // Check task type parámeters and options
   if (type === 'Cron') {
-    if (!options.cronOptions || !options.cronOptions.cronTime) {
+    if (!options?.cronTime) {
       return 'Cron tasks require a valid cronTime';
     }
   } else if (type === 'Interval') {
-    if (!options.intervalOptions || options.intervalOptions.intervalTime == undefined || options.intervalOptions.intervalTime < 0) {
-      return 'Interval tasks require a valid intervalTime';
+    if (options?.ms == undefined || options?.ms < 0) {
+      return 'Interval tasks require a valid ms';
     }
   } else if (type == 'Delay') {
-    if (!options.delayOptions || options.delayOptions.delayTime == undefined || options.delayOptions.delayTime < 0) {
-      return 'Delay tasks require a valid delayTime';
+    if (options?.ms == undefined || options?.ms < 0) {
+      return 'Delay tasks require a valid ms';
+    }
+  } else if (type == 'RunAt') {
+    if (options?.runAt == undefined ) {
+      return 'RunAt tasks require a valid runAt';
+    }
+
+    if (options.runAt.getTime() < Date.now()) {
+      return 'RunAt tasks require a future runAt date';
     }
   }
 
   return '';
+}
+
+export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
+  if (!task) return task;
+
+  if (task.options?.priority != undefined && task.options?.priority < 0) {
+    task.options.priority = undefined;
+  }
+
+  if (task.type == 'RunAt') {
+    if (task.options?.runAt != undefined) {
+      const delayInMs = task.options.runAt.getTime() - Date.now();
+      task.options.ms = delayInMs != undefined && delayInMs >= 0 
+        ? delayInMs 
+        : 0;
+    }
+  }
+
+  return task;
 }
 
 // Decorador principal

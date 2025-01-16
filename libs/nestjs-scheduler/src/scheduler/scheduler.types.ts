@@ -19,6 +19,8 @@ export interface ScheduleDecoratorOptions {
 
 /* Options */
 export interface ScheduleOptions {
+    priority?: number;
+
     cronOptions?: ScheduleCronOptions;
     intervalOptions?: ScheduleIntervalOptions;
     delayOptions?: ScheduleDelayOptions;

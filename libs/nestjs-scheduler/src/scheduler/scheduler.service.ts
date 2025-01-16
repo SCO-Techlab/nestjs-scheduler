@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CronJob } from 'cron';
-import { getRegisteredTasks, validateTask } from './scheduler.decorator';
+import { fillTaskDefaults, getRegisteredTasks, validateTask } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
 
 @Injectable()
@@ -32,7 +32,7 @@ export class SchedulerService {
         throw new Error(val_error);
       }
 
-      this._tasks.push(task);
+      this._tasks.push(fillTaskDefaults(task));
       await this.startTasks(task.name);
     }
 

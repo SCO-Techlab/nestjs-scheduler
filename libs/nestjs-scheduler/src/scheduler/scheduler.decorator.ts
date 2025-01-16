@@ -16,15 +16,15 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
 
   // Check task type parámeters and options
   if (type === 'Cron') {
-    if (!options || !options.cronOptions || !options.cronOptions.cronTime) {
-       return 'Cron tasks require a valid cronTime';
+    if (!options.cronOptions || !options.cronOptions.cronTime) {
+      return 'Cron tasks require a valid cronTime';
     }
   } else if (type === 'Interval') {
-    if (!options || !options.intervalOptions || options.intervalOptions.intervalTime == undefined || options.intervalOptions.intervalTime < 0) {
+    if (!options.intervalOptions || options.intervalOptions.intervalTime == undefined || options.intervalOptions.intervalTime < 0) {
       return 'Interval tasks require a valid intervalTime';
     }
   } else if (type == 'Delay') {
-    if (!options || !options.delayOptions || options.delayOptions.delayTime == undefined || options.delayOptions.delayTime < 0) {
+    if (!options.delayOptions || options.delayOptions.delayTime == undefined || options.delayOptions.delayTime < 0) {
       return 'Delay tasks require a valid delayTime';
     }
   }

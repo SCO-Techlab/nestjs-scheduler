@@ -23,7 +23,7 @@ export class SchedulerService {
 
   public async addTasks(tasks: ScheduleTask[] | ScheduleTask): Promise<boolean> {
     tasks = Array.isArray(tasks) ? tasks : [tasks];
-    if (!tasks || tasks.length == 0) return false;
+    if (!tasks || tasks.length == 0) throw new Error('Tasks are required');
 
     for (const task of tasks) {
       const val_error: string = validateTask(task.type, task.name, task.options);
@@ -41,21 +41,13 @@ export class SchedulerService {
 
   public async removeTasks(names: string[] | string): Promise<boolean> {
     names = Array.isArray(names) ? names : [names];
-    if (!names || names.length == 0) return false;
+    if (!names || names.length == 0) throw new Error('Names are required');
 
-    const tasks: ScheduleTask[] = [];
-    for (const name of names) {
-      const exist_task: ScheduleTask = this._tasks.find(t => t.name === name);
-      if (!exist_task) return false;
-      tasks.push(exist_task);
-    }
-
-    for (const task of tasks) {
+    for (const task of getTasksByNames.bind(this)(names)) {
       const index: number = this._tasks.indexOf(task);
       const stop_task: boolean = await this.stopTasks(task.name);
       if (!stop_task) {
-        console.error(`[removeTask] Unnable to stop task '${task.name}'`);
-        return false;
+        throw new Error(`Unnable to stop task ${task.name}`);
       }
       
       this._tasks.splice(index, 1);
@@ -66,18 +58,9 @@ export class SchedulerService {
 
   public async stopTasks(names: string[] | string): Promise<boolean> {
     names = Array.isArray(names) ? names : [names];
-
-    const tasks: ScheduleTask[] = [];
-    for (const name of names) {
-      const exist_task: ScheduleTask = this._tasks.find(t => t.name === name);
-      if (!exist_task) return false;
-      tasks.push(exist_task);
-    }
+    if (!names || names.length == 0) throw new Error('Names are required');
     
-    for (const task of tasks) {
-      const index: number = this._tasks.indexOf(task);
-      if (index < 0) return false;
-
+    for (const task of getTasksByNames.bind(this)(names)) {
       if (task.type === 'Cron') task.object.stop();
       if (task.type === 'Interval') clearInterval(task.object);
       if (task.type === 'Delay') clearTimeout(task.object);
@@ -88,18 +71,10 @@ export class SchedulerService {
 
   public async startTasks(names: string[] | string): Promise<boolean> {
     names = Array.isArray(names) ? names : [names];
+    if (!names || names.length == 0) throw new Error('Names are required');
 
-    const tasks: ScheduleTask[] = [];
-    for (const name of names) {
-      const exist_task: ScheduleTask = this._tasks.find(t => t.name === name);
-      if (!exist_task) return false;
-      tasks.push(exist_task);
-    }
-
-    for (const task of tasks) {
+    for (const task of getTasksByNames.bind(this)(names)) {
       const index: number = this._tasks.indexOf(task);
-      if (index < 0) return false;
-
       if (task.type === 'Cron') initialiceCronJob.bind(this)(task, index);
       if (task.type === 'Interval') initialiceIntervalJob.bind(this)(task, index);
       if (task.type === 'Delay') initialiceDelayJob.bind(this)(task, index);
@@ -110,15 +85,9 @@ export class SchedulerService {
 
   public async restartTasks(names: string[] | string): Promise<boolean> {
     names = Array.isArray(names) ? names : [names];
+    if (!names || names.length == 0) throw new Error('Names are required');
 
-    const tasks: ScheduleTask[] = [];
-    for (const name of names) {
-      const exist_task: ScheduleTask = this._tasks.find(t => t.name === name);
-      if (!exist_task) return false;
-      tasks.push(exist_task);
-    }
-
-    for (const task of tasks) {
+    for (const task of getTasksByNames.bind(this)(names)) {
       await this.stopTasks(task.name);
       await this.startTasks(task.name);
     }
@@ -177,4 +146,16 @@ function initialiceDelayJob(task: ScheduleTask, index: number): void {
   }, task.options.delayOptions.delayTime);
 
   this._tasks[index].object = timeOutJob;
+}
+
+function getTasksByNames(names: string[]) : ScheduleTask[] {
+  const tasks: ScheduleTask[] = [];
+  
+  for (const name of names) {
+    const exist_task: ScheduleTask = this._tasks.find(t => t.name === name);
+    if (!exist_task) throw new Error(`Task ${name} not found`);
+    tasks.push(exist_task);
+  }
+
+  return tasks;
 }

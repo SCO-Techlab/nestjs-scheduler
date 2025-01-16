@@ -1,5 +1,6 @@
 import { DynamicModule, Module } from "@nestjs/common";
 import { SchedulerService } from "./scheduler.service";
+import { SchedulerStateService } from "./scheduler.state";
 
 @Module({})
 export class SchedulerModule {
@@ -10,6 +11,7 @@ export class SchedulerModule {
       controllers: [],
       providers: [
         SchedulerService,
+        SchedulerStateService,
       ],
       exports: [
         SchedulerService,

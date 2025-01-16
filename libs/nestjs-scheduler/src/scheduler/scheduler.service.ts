@@ -99,18 +99,24 @@ export class SchedulerService {
 }
 
 function initialiceCronJob(task: ScheduleTask, index: number): void {
-  const cronJob = new CronJob(task.options.cronTime, async () => {
-    try {
-      if (task.decorator) {
-        const instance = new task.decorator.target();
-        await instance[task.decorator.methodName]();
-      } else {
-        if (task.fn) await task.fn();
+  const cronJob = new CronJob(
+    task.options.cronTime, // CronTime
+    async () => { // OnTick
+      try {
+        if (task.decorator) {
+          const instance = new task.decorator.target();
+          await instance[task.decorator.methodName]();
+        } else {
+          if (task.fn) await task.fn();
+        }
+      } catch (error) {
+        console.error(`[initialiceCronJob] Cron '${task.name}' Error: ${error}`);
       }
-    } catch (error) {
-      console.error(`[initialiceCronJob] Cron '${task.name}' Error: ${error}`);
-    }
-  });
+    },
+    null, // OnComplete
+    false, // Start,
+    task.options?.timeZone ? task.options.timeZone : null, // Timezone
+  );
 
   this._tasks[index].object = cronJob;
   this._tasks[index].object.start();

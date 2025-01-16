@@ -14,6 +14,7 @@ export interface ScheduleOptions {
     cronTime?: string;
     ms?: number;
     runAt?: Date;
+    timeZone?: string;
 }
 
 export class ScheduleTask {

@@ -1,4 +1,5 @@
 import { Type } from '@nestjs/common';
+import * as moment from 'moment-timezone';
 import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types';
 
 const tasks: ScheduleTask[] = [];
@@ -35,6 +36,12 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
     if (!options?.cronTime) {
       return 'Cron tasks require a valid cronTime';
     }
+
+    if (options.timeZone != undefined) {
+      if (!moment.tz.names().includes(options.timeZone)) {
+        return 'Cron tasks require a valid timeZone';
+      }
+    }
   } else if (type === 'Interval') {
     if (options?.ms == undefined || options?.ms < 0) {
       return 'Interval tasks require a valid ms';
@@ -51,6 +58,12 @@ export function validateTask(type: ExecutionType, name: string, options: Schedul
     if (options.runAt.getTime() < Date.now()) {
       return 'RunAt tasks require a future runAt date';
     }
+
+    if (options.timeZone != undefined) {
+      if (!moment.tz.names().includes(options.timeZone)) {
+        return 'RunAt tasks require a valid timeZone';
+      }
+    }
   }
 
   return '';
@@ -65,7 +78,10 @@ export function fillTaskDefaults(task: ScheduleTask): ScheduleTask {
 
   if (task.type == 'RunAt') {
     if (task.options?.runAt != undefined) {
-      const delayInMs = task.options.runAt.getTime() - Date.now();
+      const delayInMs: number = task.options.timeZone == undefined
+        ? task.options.runAt.getTime() - Date.now()
+        : moment(task.options.runAt).tz(task.options.timeZone).valueOf() - Date.now();
+
       task.options.ms = delayInMs != undefined && delayInMs >= 0 
         ? delayInMs 
         : 0;

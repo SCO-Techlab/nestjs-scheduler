@@ -3,167 +3,100 @@
 </p>
 
 ## Nest.JS Gridfs MongoDB
-Nest.JS Gridfs Mongodb is a multiple mongodb gridfs buckets management for Nest.JS framework.
+Nest.JS Scheduler is a easy scheduler manager (Cron, Interval, Delay) for Nest.JS framework.
+Enables you to schedule tasks and manage their execution, from decorator or programmatically.
 
 ### Get Started
 - Install dependency
 <pre>
 npm i @sco-techlab/nestjs-scheduler
 </pre>
-- Import GridfsModule module in your 'app.module.ts' file, register or registerAsync methods availables
+- Import SchedulerModule module in your 'app.module.ts' file with register method
 <pre>
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { GridfsModule } from '@sco-techlab/nestjs-scheduler';
+import { SchedulerModule } from '@app/nestjs-scheduler';
 
 @Module({
   imports: [
-    // A mongodb connection is required, you can use mongoose for example like this
-    MongooseModule.forRoot('mongodb://localhost:27017/nestjs-scheduler'),
-
-    // Simple register with config object
-    GridfsModule.register({
-      bucketNames: ['client-files', 'worker-files'],
-      indexes: [
-        {
-          bucketName: 'client-files',
-          properties: ["position"],
-          filename: true,
-        }
-      ]
-    }),
-
-    // Async register with config object, you can use env variables to load module here
-    /* GridfsModule.registerAsync({
-      useFactory: () => {
-        return {
-          bucketNames: ['client-files', 'worker-files'],
-          indexes: [
-            {
-              bucketName: 'client-files',
-              properties: ["position"],
-              filename: true,
-            }
-          ]
-        };
-      }
-    }), */
+    SchedulerModule.register(),
   ],
 })
 export class AppModule {}
 </pre>
 - Module import is global mode, to use gridfs service only need to provide constructor dependency inyection
 
-### Nest.JS Gridfs MongoDB config
+### Nest.JS Scheduler types
 <pre>
-export class GridfsConfig {
-  bucketNames: string[]; // Name of your buckets, for every bucket will create two collections, bucketName.files and bucketName.chunks
-  indexes?: GridfsConfigMetadataIndex[]; // Indexes configuration for every bucket, you can use this to create a unique index for a specific bucket, its totally optional
+
+export type ExecutionType = 'Cron' | 'Interval' | 'Delay' | 'RunAt';
+
+export class ScheduleTask {
+  type: ExecutionType; // Type of execution
+  name: string; // Name of the task, must be unique
+  options: ScheduleOptions; // Options / parameters of the task
+  context: any; // Context to execute
+  fn?: any; // Function to execute
+  object?: any; // Object to save the execution
+  response?: any; // Response of the execution
 }
 
-
-// If not properties and filename provided, the index will be not applied and duplicated files will be allowed
-export class GridfsConfigMetadataIndex {
-  bucketName: string; // Name of the bucket to apply this index object
-  properties?: string[]; // Properties of the GridfsFile metadata object values to apply unique condition, its totally optional
-  filename?: boolean; // If true, will create a unique index for the filename property, its totally optional
+export interface ScheduleOptions {
+  priority?: number; // Priority of execution of initial decorator tasks
+  cronTime?: string; // Cron time value for cron tasks
+  ms?: number; // Milliseconds value for interval tasks
+  runAt?: Date; // Date value for runAt tasks
+  timeZone?: string; // Timezone value for cron and runAt tasks, on runAt
 }
 </pre>
 
-### Nest.JS Gridfs MongoDB types
+### Implementation example
 <pre>
+import { Injectable } from "@nestjs/common";
+import { of } from "rxjs";
+import { Schedule, SchedulerContext, SchedulerService, ScheduleTask } from "@app/nestjs-scheduler";
 
-// Files management classes
-export class GridfsFileMetadata {
-  mimetype?: string; // mimetype is always provided in metadata object
-  [key: string]: any;
+@Injectable()
+export class CronesService extends SchedulerContext {
 
-  constructor(data: Partial&lt;GridfsFileMetadata&gt; = {}) {
-    Object.assign(this, data);
-  }
-}
+  private cronesServiceExecutionCounter: number = 0;
 
-export class GridfsFileBuffer {
-  _id?: string; // _id of the GridfsFile object
-  buffer?: Buffer;
-  base64?: string;
-}
+  constructor(private readonly schedulerService: SchedulerService) { 
+    super(schedulerService);
 
-export class GridfsFile {
-    _id?: string;
-    length?: number;
-    chunkSize?: number;
-    filename: string;
-    metadata?: GridfsFileMetadata;
-    uploadDate: Date;
-    md5?: string;
-    buffer?: GridfsFileBuffer;
-}
-
-
-// Class to manage the getFiles filter function
-export class GridfsGetFileOptions {
-    filter?: any; // Object with the properties to filter the documents, same work as moongose find filter
-    includeBuffer?: boolean; // Will return the GridfsFile object with the buffer property, buffer includes the data and base64 of the file
-    single?: boolean; // Will return a single document (GridfsFile) or an array of documents (GridfsFile[])
-}
-</pre>
-
-### Controller example
-<pre>
-import { Body, Controller, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { GridfsFile, GridfsFileMetadata, GridfsGetFileOptions, GridfsService } from "@sco-techlab/nestjs-scheduler";
-
-@Controller('nestjs-scheduler')
-export class AppController {
-
-  constructor(private readonly gridfsService: GridfsService) {}
-
-  @Post('uploadFiles/:bucketName')
-  @UseInterceptors(FileInterceptor('file'))
-  async uploadFiles(
-    @UploadedFile() file: Express.Multer.File,
-    @Param('bucketName') bucketName: string,
-    @Body() data: any,
-  ): Promise&lt;boolean&gt; {
-    // You can expect a single file (File) or an array of files (File[])
-    // The body with metadata is optional, and it will be required to pass in text format (JSON.stringify // JSON.parse)
-    // If you don't provide metadata, the file will be uploaded with default metadata with mimetype property value
-    return await this.gridfsService.uploadFiles(
-      bucketName, 
-      file, 
-      data.body 
-        ? JSON.parse(data.body.toString()) as GridfsFileMetadata
-        : undefined
+    // Add Programatically Cron Task
+    this.schedulerService.addTasks(
+      { 
+        type: 'Cron', 
+        name: 'crones_cron_1_service', 
+        options: { cronTime: '*/5 * * * * *',  },
+        context: this,
+        fn: async () => {
+          this.cronesServiceExecutionCounter++;
+          return of(this.cronesServiceExecutionCounter);
+        }
+      },
     );
-  }
-  
-  @Post('getFiles/:bucketName')
-  async getFiles(
-    @Param('bucketName') bucketName: string,
-    @Body() options: GridfsGetFileOptions,
-  ): Promise&lt;GridfsFile&gt; {
-    /* 
-      You provide options to manage query filter.
-      Options is an object with the following properties:
-      - filter: Object (Object with the properties to filter the documents, same work as moongose find filter)
-      - includeBuffer: boolean (Will return the GridfsFile object with the buffer property, buffer includes the data and base64 of the file)
-      - single: boolean (Will return a single document (GridfsFile) or an array of documents (GridfsFile[]))
-    */
-    return await this.gridfsService.getFiles(bucketName, options) as GridfsFile;
+
+    // Subscribe to Programatically task
+    this.schedulerService.subscribeToTask('crones_cron_1_service').subscribe((data: ScheduleTask) => {
+      console.log("Sub crones_cron_1_service: " + data?.response)
+    });
+
+    // Subscribe to Decorator task
+    this.schedulerService.subscribeToTask('crones_cron_1_decorator').subscribe((data: ScheduleTask) => {
+      console.log("Sub crones_cron_1_decorator: " + data?.response)
+    });
   }
 
-  @Post('deleteFiles/:bucketName')
-  async deleteFiles(
-    @Param('bucketName') bucketName: string,
-    @Body() data: any,
-  ): Promise&lt;boolean&gt; {
-    // You can expect a single id (string) or an array of ids (string[])
-    return await this.gridfsService.deleteFiles(bucketName, data._ids ?? []);
+  @Schedule('Cron', 'crones_cron_1_decorator', { cronTime: '*/5 * * * * *',  })
+  async handleTask() {
+    return of(this.cronesServiceExecutionCounter);
   }
 }
 </pre>
+
+### Examples
+- Live coding: [Stackblitz example](https://stackblitz.com/edit/nestjs-typescript-starter-8fth79jg)
 
 ## Author
 Santiago Comeras Oteo

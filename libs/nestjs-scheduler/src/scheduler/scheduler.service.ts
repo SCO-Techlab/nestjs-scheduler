@@ -192,84 +192,69 @@ export class SchedulerService {
 }
 
 async function cronJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
-  return await new Promise<void>(async (resolve) => {
-    try {
-      // Get response from cron callback
-      // Task.decorator will start the task from the metadata
-      // If the Job is programmatically started, the task.fn will be called
-      const response: any = !state.get(task.name).fn 
-        ? null
-        : context 
-          ? await state.get(task.name).fn.bind(context)() 
-          : await state.get(task.name).fn();
-  
-      // If callback return a value, manage the subscription and update value
-      if (response != undefined) {
-        const current_task: ScheduleTask = state.get(task.name);
-        current_task.response = await manageTaskSubscription(state.get(task.name), response);
-        state.set(task.name, current_task);
-      }
+  try {
+    // Get response from cron callback
+    // Task.decorator will start the task from the metadata
+    // If the Job is programmatically started, the task.fn will be called
+    const response: any = !state.get(task.name).fn 
+      ? null
+      : context 
+        ? await state.get(task.name).fn.bind(context)() 
+        : await state.get(task.name).fn();
 
-      resolve();
-    } catch (error) {
-      console.error(`[Scheduler] Cron '${task.name}' execution error: ${error}`);
-      resolve();
+    // If callback return a value, manage the subscription and update value
+    if (response != undefined) {
+      const current_task: ScheduleTask = state.get(task.name);
+      current_task.response = await manageTaskSubscription(state.get(task.name), response);
+      state.set(task.name, current_task);
     }
-  })
+  } catch (error) {
+    console.error(`[Scheduler] Cron '${task.name}' execution error: ${error}`);
+  }
 }
 
 async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
-  return await new Promise<void>(async (resolve) => {
-    try {
-      // Get response from cron callback
-      // Task.decorator will start the task from the metadata
-      // If the Job is programmatically started, the task.fn will be called
-      const response: any = !state.get(task.name).fn 
-        ? null
-        : context 
-          ? await state.get(task.name).fn.bind(context)() 
-          : await state.get(task.name).fn();
-  
-      // If callback return a value, manage the subscription and update value
-      if (response != undefined) {
-        const current_task: ScheduleTask = state.get(task.name);
-        current_task.response = await manageTaskSubscription(state.get(task.name), response);
-        state.set(task.name, current_task);
-      }
+  try {
+    // Get response from cron callback
+    // Task.decorator will start the task from the metadata
+    // If the Job is programmatically started, the task.fn will be called
+    const response: any = !state.get(task.name).fn 
+      ? null
+      : context 
+        ? await state.get(task.name).fn.bind(context)() 
+        : await state.get(task.name).fn();
 
-      resolve();
-    } catch (error) {
-      console.error(`[Scheduler] Interval '${task.name}' execution error: ${error}`);
-      resolve();
+    // If callback return a value, manage the subscription and update value
+    if (response != undefined) {
+      const current_task: ScheduleTask = state.get(task.name);
+      current_task.response = await manageTaskSubscription(state.get(task.name), response);
+      state.set(task.name, current_task);
     }
-  });
+  } catch (error) {
+    console.error(`[Scheduler] Interval '${task.name}' execution error: ${error}`);
+  }
 }
 
 async function delayJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
-  return await new Promise<void>(async (resolve) => {
-    try {
-      // Get response from cron callback
-      // Task.decorator will start the task from the metadata
-      // If the Job is programmatically started, the task.fn will be called
-      const response: any = !state.get(task.name).fn 
-        ? null
-        : context 
-          ? await state.get(task.name).fn.bind(context)() 
-          : await state.get(task.name).fn();
-  
-      // If callback return a value, manage the subscription and update value
-      if (response != undefined) {
-        const current_task: ScheduleTask = state.get(task.name);
-        current_task.response = await manageTaskSubscription(state.get(task.name), response);
-        state.set(task.name, current_task);
-      }
+  try {
+    // Get response from cron callback
+    // Task.decorator will start the task from the metadata
+    // If the Job is programmatically started, the task.fn will be called
+    const response: any = !state.get(task.name).fn 
+      ? null
+      : context 
+        ? await state.get(task.name).fn.bind(context)() 
+        : await state.get(task.name).fn();
 
-      resolve();
-    } catch (error) {
-      console.error(`[Scheduler] ${task.type == 'RunAt' ? 'RunAt' : 'Delay'} '${task.name}' execution error: ${error}`);
-      resolve();
+    // If callback return a value, manage the subscription and update value
+    if (response != undefined) {
+      const current_task: ScheduleTask = state.get(task.name);
+      current_task.response = await manageTaskSubscription(state.get(task.name), response);
+      state.set(task.name, current_task);
     }
-  });
+  } catch (error) {
+    console.error(`[Scheduler] ${task.type == 'RunAt' ? 'RunAt' : 'Delay'} '${task.name}' execution error: ${error}`);
+  }
 }
 
 function getTasksByNames(names: string[]) : ScheduleTask[] {

@@ -232,7 +232,7 @@ async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateServ
   
       // If callback return a value, manage the subscription and update value
       if (response != undefined) {
-        const current_task: ScheduleTask = state.get(task.name).response;
+        const current_task: ScheduleTask = state.get(task.name);
         current_task.response = await manageTaskSubscription(state.get(task.name), response);
         state.set(task.name, current_task);
       }
@@ -259,7 +259,7 @@ async function delayJobCallback(task: ScheduleTask, state: SchedulerStateService
   
       // If callback return a value, manage the subscription and update value
       if (response != undefined) {
-        const current_task: ScheduleTask = state.get(task.name).response;
+        const current_task: ScheduleTask = state.get(task.name);
         current_task.response = await manageTaskSubscription(state.get(task.name), response);
         state.set(task.name, current_task);
       }

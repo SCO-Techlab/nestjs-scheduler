@@ -8,7 +8,28 @@ import { SchedulerStateService } from './scheduler.state';
 @Injectable()
 export class SchedulerService {
   
-  constructor(private readonly state: SchedulerStateService) {}
+  private readonly _contexts: Map<string, any>;
+
+  public get contexts(): any[] {
+    if (!this._contexts) return [];
+    if (this._contexts.size == 0) return [];
+    return Array.from(this._contexts.values());
+  }
+
+  public set context(context: any) {
+    if (!isClass(context.constructor))
+      throw new Error('Context must be a class');
+
+    this._contexts.set(context.constructor.name, context);
+  }
+
+  public get tasks(): ScheduleTask[] {
+    return this.state.values();
+  }
+
+  constructor(private readonly state: SchedulerStateService) {
+    this._contexts = new Map<string, any>();
+  }
 
   async onModuleInit() {
     // Get registered tasks from decoratos
@@ -23,10 +44,6 @@ export class SchedulerService {
     }
   }
 
-  public get tasks(): ScheduleTask[] {
-    return this.state.values();
-  }
-
   public addTasks(tasks: ScheduleTask[] | ScheduleTask): boolean {
     // Convert input param to list
     tasks = Array.isArray(tasks) ? tasks : [tasks];
@@ -34,7 +51,7 @@ export class SchedulerService {
 
     for (const task of tasks) {
       // Validate new task params
-      const val_error: string = validateTask(task.type, task.name, task.options);
+      const val_error: string = validateTask(this.state.values(),task.type, task.name, task.options);
       if (val_error) throw new Error(val_error);
 
       // Fill task default params values
@@ -109,10 +126,10 @@ export class SchedulerService {
         this.state.get(task.name).object = new CronJob(
           this.state.get(task.name).options.cronTime, // CronTime
           cronJobCallback.bind(
-            this.state.get(task.name).context,
+            this._contexts.get(this.state.get(task.name).context.constructor.name),
             this.state.get(task.name), 
             this.state, 
-            this.state.get(task.name).context
+            this._contexts.get(this.state.get(task.name).context.constructor.name)
           ), // OnTick
           null, // OnComplete
           false, // Start,
@@ -125,10 +142,10 @@ export class SchedulerService {
       if (this.state.get(task.name).type === 'Interval') {
         this.state.get(task.name).object = setInterval(
           intervalJobCallback.bind(
-            this.state.get(task.name).context,
+            this._contexts.get(this.state.get(task.name).context.constructor.name),
             this.state.get(task.name), 
             this.state, 
-            this.state.get(task.name).context
+            this._contexts.get(this.state.get(task.name).context.constructor.name),
           ),
           this.state.get(task.name).options.ms
         );
@@ -137,10 +154,10 @@ export class SchedulerService {
       if (this.state.get(task.name).type === 'Delay' || this.state.get(task.name).type === 'RunAt') {
         this.state.get(task.name).object = setTimeout(
           delayJobCallback.bind(
-            this.state.get(task.name).context,
+            this._contexts.get(this.state.get(task.name).context.constructor.name),
             this.state.get(task.name), 
             this.state, 
-            this.state.get(task.name).context
+            this._contexts.get(this.state.get(task.name).context.constructor.name),
           ),
           this.state.get(task.name).options.ms
         );
@@ -273,6 +290,10 @@ function getTasksByNames(names: string[]) : ScheduleTask[] {
 
 function isFunction(variable: any): boolean {
   return typeof variable === 'function' && !/^class\s/.test(variable.toString());
+}
+
+function isClass(variable: any): boolean {
+  return typeof variable === 'function' && /^class\s/.test(variable.toString());
 }
 
 async function resolveValue(value: any): Promise<any> {

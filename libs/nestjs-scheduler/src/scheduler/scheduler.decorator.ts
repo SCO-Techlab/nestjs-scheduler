@@ -21,7 +21,7 @@ export function getInitialDecoratorsTasks(): ScheduleTask[] {
 }
 
 // Validate new task
-export function validateTask(type: ExecutionType, name: string, options: ScheduleOptions = {}): string {
+export function validateTask(tasks: ScheduleTask[], type: ExecutionType, name: string, options: ScheduleOptions = {}): string {
   // Check if task name is already registered
   if (tasks.find(t => t.name === name)) {
     return `Task name '${name}' already registered`;
@@ -107,7 +107,7 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
   return (target: Object, methodName: string | symbol, descriptor: PropertyDescriptor) => {
 
     // Validate task, if error reported not continue with execution
-    const val_error: string = validateTask(type, name, options);
+    const val_error: string = validateTask(tasks, type, name, options);
     if (val_error) throw new Error(val_error);
 
     // Create the new task with the defaults values filled

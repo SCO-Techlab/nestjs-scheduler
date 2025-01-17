@@ -106,7 +106,7 @@ export class SchedulerService {
       if (this.state.get(task.name).type === 'Cron') {
         this.state.get(task.name).object = new CronJob(
           this.state.get(task.name).options.cronTime, // CronTime
-          cronJobCallback.bind(this, task), // OnTick
+          cronJobCallback.bind(this, this.state.get(task.name), this.state), // OnTick
           null, // OnComplete
           false, // Start,
           this.state.get(task.name).options?.timeZone 
@@ -117,14 +117,14 @@ export class SchedulerService {
 
       if (this.state.get(task.name).type === 'Interval') {
         this.state.get(task.name).object = setInterval(
-          intervalJobCallback.bind(this, this.state.get(task.name)), 
+          intervalJobCallback.bind(this, this.state.get(task.name), this.state), 
           this.state.get(task.name).options.ms
         );
       }
 
       if (this.state.get(task.name).type === 'Delay' || this.state.get(task.name).type === 'RunAt') {
         this.state.get(task.name).object = setTimeout(
-          delayJobCallback.bind(this, this.state.get(task.name)), 
+          delayJobCallback.bind(this, this.state.get(task.name), this.state), 
           this.state.get(task.name).options.ms
         );
       }
@@ -160,19 +160,19 @@ export class SchedulerService {
   }
 }
 
-async function cronJobCallback(task: ScheduleTask): Promise<void> {
+async function cronJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.fn ? await task.fn() : null;
+      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
   
       // If callback return a value, manage the subscription and update value
-      if (response) {
-        const current_task: ScheduleTask = this.state.get(task.name);
-        current_task.response = await manageTaskSubscription(task, response);
-        this.state.set(task.name, current_task);
+      if (response != undefined) {
+        const current_task: ScheduleTask = state.get(task.name);
+        current_task.response = await manageTaskSubscription(state.get(task.name), response);
+        state.set(task.name, current_task);
       }
 
       resolve();
@@ -183,19 +183,19 @@ async function cronJobCallback(task: ScheduleTask): Promise<void> {
   })
 }
 
-async function intervalJobCallback(task: ScheduleTask): Promise<void> {
+async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.fn ? await task.fn() : null;
+      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
   
       // If callback return a value, manage the subscription and update value
-      if (response) {
-        const current_task: ScheduleTask = this.state.get(task.name).response;
-        current_task.response = await manageTaskSubscription(task, response);
-        this.state.set(task.name, current_task);
+      if (response != undefined) {
+        const current_task: ScheduleTask = state.get(task.name).response;
+        current_task.response = await manageTaskSubscription(state.get(task.name), response);
+        state.set(task.name, current_task);
       }
 
       resolve();
@@ -206,19 +206,19 @@ async function intervalJobCallback(task: ScheduleTask): Promise<void> {
   });
 }
 
-async function delayJobCallback(task: ScheduleTask): Promise<void> {
+async function delayJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = task.fn ? await task.fn() : null;
+      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
   
       // If callback return a value, manage the subscription and update value
-      if (response) {
-        const current_task: ScheduleTask = this.state.get(task.name).response;
-        current_task.response = await manageTaskSubscription(task, response);
-        this.state.set(task.name, current_task);
+      if (response != undefined) {
+        const current_task: ScheduleTask = state.get(task.name).response;
+        current_task.response = await manageTaskSubscription(state.get(task.name), response);
+        state.set(task.name, current_task);
       }
 
       resolve();

@@ -4,7 +4,7 @@ import { ExecutionType, ScheduleOptions, ScheduleTask } from './scheduler.types'
 const tasks: ScheduleTask[] = [];
 
 // Expose tasks list
-export function getRegisteredTasks(): ScheduleTask[] {
+export function getInitialDecoratorsTasks(): ScheduleTask[] {
   return tasks.sort((a, b) => {
     // If both have priority defined, they are compared normally
     if (a.options.priority !== undefined && b.options.priority !== undefined) {
@@ -115,6 +115,7 @@ export function Schedule(type: ExecutionType, name: string, options: ScheduleOpt
       type,
       name,
       options,
+      context: target,
       fn: target[methodName.toString()],
       object: undefined,
       response: undefined,

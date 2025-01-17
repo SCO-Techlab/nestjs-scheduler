@@ -4,6 +4,7 @@ export class ScheduleTask {
     type: ExecutionType; // Type of execution
     name: string; // Name of the task, must be unique
     options: ScheduleOptions; // Options / parameters of the task
+    context: any; // Context to execute
     fn?: any; // Function to execute
     object?: any; // Object to save the execution
     response?: any; // Response of the execution

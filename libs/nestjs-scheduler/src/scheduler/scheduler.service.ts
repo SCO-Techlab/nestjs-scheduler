@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { CronJob } from 'cron';
 import { isObservable, Observable } from 'rxjs';
-import { fillTaskDefaults, getRegisteredTasks, validateTask } from './scheduler.decorator';
+import { fillTaskDefaults, getInitialDecoratorsTasks, validateTask } from './scheduler.decorator';
 import { ScheduleTask } from './scheduler.types';
 import { SchedulerStateService } from './scheduler.state';
 
 @Injectable()
 export class SchedulerService {
   
-  constructor(private readonly state: SchedulerStateService) {
+  constructor(private readonly state: SchedulerStateService) {}
+
+  async onModuleInit() {
     // Get registered tasks from decoratos
-    const tasks: ScheduleTask[] = getRegisteredTasks() ?? [];
+    const tasks: ScheduleTask[] = getInitialDecoratorsTasks() ?? [];
     if (!tasks || tasks.length == 0) return;
 
     for (const task of tasks) {
@@ -106,7 +108,12 @@ export class SchedulerService {
       if (this.state.get(task.name).type === 'Cron') {
         this.state.get(task.name).object = new CronJob(
           this.state.get(task.name).options.cronTime, // CronTime
-          cronJobCallback.bind(this, this.state.get(task.name), this.state), // OnTick
+          cronJobCallback.bind(
+            this.state.get(task.name).context,
+            this.state.get(task.name), 
+            this.state, 
+            this.state.get(task.name).context
+          ), // OnTick
           null, // OnComplete
           false, // Start,
           this.state.get(task.name).options?.timeZone 
@@ -117,14 +124,24 @@ export class SchedulerService {
 
       if (this.state.get(task.name).type === 'Interval') {
         this.state.get(task.name).object = setInterval(
-          intervalJobCallback.bind(this, this.state.get(task.name), this.state), 
+          intervalJobCallback.bind(
+            this.state.get(task.name).context,
+            this.state.get(task.name), 
+            this.state, 
+            this.state.get(task.name).context
+          ),
           this.state.get(task.name).options.ms
         );
       }
 
       if (this.state.get(task.name).type === 'Delay' || this.state.get(task.name).type === 'RunAt') {
         this.state.get(task.name).object = setTimeout(
-          delayJobCallback.bind(this, this.state.get(task.name), this.state), 
+          delayJobCallback.bind(
+            this.state.get(task.name).context,
+            this.state.get(task.name), 
+            this.state, 
+            this.state.get(task.name).context
+          ),
           this.state.get(task.name).options.ms
         );
       }
@@ -153,20 +170,21 @@ export class SchedulerService {
   }
 
   public subscribeToTask(name: string): Observable<ScheduleTask> {
-    const exist_task: boolean = this.state.exist(name);
-    if (!exist_task) throw new Error(`Task ${name} not found`);
-
     return this.state.getObservable(name);
   }
 }
 
-async function cronJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
+async function cronJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
+      const response: any = !state.get(task.name).fn 
+        ? null
+        : context 
+          ? await state.get(task.name).fn.bind(context)() 
+          : await state.get(task.name).fn();
   
       // If callback return a value, manage the subscription and update value
       if (response != undefined) {
@@ -183,13 +201,17 @@ async function cronJobCallback(task: ScheduleTask, state: SchedulerStateService)
   })
 }
 
-async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
+async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
+      const response: any = !state.get(task.name).fn 
+        ? null
+        : context 
+          ? await state.get(task.name).fn.bind(context)() 
+          : await state.get(task.name).fn();
   
       // If callback return a value, manage the subscription and update value
       if (response != undefined) {
@@ -206,13 +228,17 @@ async function intervalJobCallback(task: ScheduleTask, state: SchedulerStateServ
   });
 }
 
-async function delayJobCallback(task: ScheduleTask, state: SchedulerStateService): Promise<void> {
+async function delayJobCallback(task: ScheduleTask, state: SchedulerStateService, context: any): Promise<void> {
   return await new Promise<void>(async (resolve) => {
     try {
       // Get response from cron callback
       // Task.decorator will start the task from the metadata
       // If the Job is programmatically started, the task.fn will be called
-      const response: any = state.get(task.name).fn ? await state.get(task.name).fn() : null;
+      const response: any = !state.get(task.name).fn 
+        ? null
+        : context 
+          ? await state.get(task.name).fn.bind(context)() 
+          : await state.get(task.name).fn();
   
       // If callback return a value, manage the subscription and update value
       if (response != undefined) {

@@ -21,11 +21,13 @@
     "Intervals",
     "Delay"
   ],
-  "dependencies": {
+  "peerDependencies": {
     "@nestjs/common": "^10.0.0",
-    "cron": "^3.5.0",
-    "moment-timezone": "^0.5.46",
     "reflect-metadata": "^0.1.13"
+  },
+  "dependencies": {
+    "cron": "^3.5.0",
+    "moment-timezone": "^0.5.46"
   },
   "devDependencies": {
     "@types/express": "^5.0.0"

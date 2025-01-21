@@ -2,7 +2,7 @@
   <img src="sco-techlab.png" alt="plot" width="250" />
 </p>
 
-## Nest.JS Gridfs MongoDB
+## Nest.JS Scheduler
 Nest.JS Scheduler is a easy scheduler manager (Cron, Interval, Delay) for Nest.JS framework.
 Enables you to schedule tasks and manage their execution, from decorator or programmatically.
 
